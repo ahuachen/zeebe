@@ -21,7 +21,7 @@ import io.atomix.utils.Builder;
 /** Serializer builder. */
 public class SerializerBuilder implements Builder<Serializer> {
   private final String name;
-  private final Namespace.Builder namespaceBuilder =
+  private final NamespaceImpl.Builder namespaceBuilder =
       Namespace.builder().register(Namespaces.BASIC).nextId(Namespaces.BEGIN_USER_CUSTOM_ID);
 
   public SerializerBuilder() {
@@ -79,7 +79,7 @@ public class SerializerBuilder implements Builder<Serializer> {
    * @param namespace the namespace to add
    * @return the serializer builder
    */
-  public SerializerBuilder withNamespace(final Namespace namespace) {
+  public SerializerBuilder withNamespace(final NamespaceImpl namespace) {
     namespaceBuilder.register(namespace);
     return this;
   }
@@ -121,6 +121,13 @@ public class SerializerBuilder implements Builder<Serializer> {
 
   @Override
   public Serializer build() {
-    return Serializer.using(name != null ? namespaceBuilder.build(name) : namespaceBuilder.build());
+    // TODO: refactor
+    final Namespace fallback =
+        name != null ? namespaceBuilder.build(name) : namespaceBuilder.build();
+    final Namespace namespace =
+        name != null
+            ? namespaceBuilder.setCompatible(true).build(name)
+            : namespaceBuilder.setCompatible(true).build();
+    return Serializer.using(new FallbackNamespace(fallback, namespace));
   }
 }

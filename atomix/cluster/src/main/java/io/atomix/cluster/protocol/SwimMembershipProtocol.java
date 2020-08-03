@@ -33,7 +33,9 @@ import io.atomix.cluster.impl.AddressSerializer;
 import io.atomix.utils.Version;
 import io.atomix.utils.event.AbstractListenerManager;
 import io.atomix.utils.net.Address;
+import io.atomix.utils.serializer.FallbackNamespace;
 import io.atomix.utils.serializer.Namespace;
+import io.atomix.utils.serializer.NamespaceImpl.Builder;
 import io.atomix.utils.serializer.Namespaces;
 import io.atomix.utils.serializer.Serializer;
 import java.util.ArrayList;
@@ -75,16 +77,12 @@ public class SwimMembershipProtocol
   private static final String MEMBERSHIP_PROBE_REQUEST = "atomix-membership-probe-request";
   private static final Serializer SERIALIZER =
       Serializer.using(
-          Namespace.builder()
-              .register(Namespaces.BASIC)
-              .nextId(Namespaces.BEGIN_USER_CUSTOM_ID)
-              .register(MemberId.class)
-              .register(new AddressSerializer(), Address.class)
-              .register(ImmutableMember.class)
-              .register(State.class)
-              .register(ImmutablePair.class)
-              .build("ClusterMembershipService"));
+          new FallbackNamespace(
+              buildNamespace().build("ClusterMembershipService"),
+              buildNamespace().setCompatible(true).build("ClusterMembershipService-compatible")));
+
   private final SwimMembershipProtocolConfig config;
+
   private NodeDiscoveryService discoveryService;
   private BootstrapService bootstrapService;
   private final AtomicBoolean started = new AtomicBoolean();
@@ -116,6 +114,17 @@ public class SwimMembershipProtocol
 
   SwimMembershipProtocol(final SwimMembershipProtocolConfig config) {
     this.config = config;
+  }
+
+  private static Builder buildNamespace() {
+    return Namespace.builder()
+        .register(Namespaces.BASIC)
+        .nextId(Namespaces.BEGIN_USER_CUSTOM_ID)
+        .register(MemberId.class)
+        .register(new AddressSerializer(), Address.class)
+        .register(ImmutableMember.class)
+        .register(State.class)
+        .register(ImmutablePair.class);
   }
 
   /**
