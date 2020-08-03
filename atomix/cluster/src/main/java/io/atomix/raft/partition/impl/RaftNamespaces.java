@@ -55,74 +55,7 @@ import java.util.LinkedList;
 public final class RaftNamespaces {
 
   /** Raft protocol namespace. */
-  public static final Namespace RAFT_PROTOCOL =
-      Namespace.builder()
-          .register(Namespaces.BASIC)
-          .nextId(Namespaces.BEGIN_USER_CUSTOM_ID)
-          .register(Void.class) // OpenSessionRequest
-          .register(Void.class) // OpenSessionResponse
-          .register(Void.class) // CloseSessionRequest
-          .register(Void.class) // CloseSessionResponse
-          .register(Void.class) // KeepAliveRequest
-          .register(Void.class) // KeepAliveResponse
-          .register(Void.class) // HeartbeatRequest
-          .register(Void.class) // HeartbeatResponse
-          .register(Void.class) // QueryRequest
-          .register(Void.class) // QueryResponse
-          .register(Void.class) // CommandRequest
-          .register(Void.class) // CommandResponse
-          .register(Void.class) // MetadataRequest
-          .register(Void.class) // MetadataResponse
-          .register(JoinRequest.class)
-          .register(JoinResponse.class)
-          .register(LeaveRequest.class)
-          .register(LeaveResponse.class)
-          .register(ConfigureRequest.class)
-          .register(ConfigureResponse.class)
-          .register(ReconfigureRequest.class)
-          .register(ReconfigureResponse.class)
-          .register(InstallRequest.class)
-          .register(InstallResponse.class)
-          .register(PollRequest.class)
-          .register(PollResponse.class)
-          .register(VoteRequest.class)
-          .register(VoteResponse.class)
-          .register(AppendRequest.class)
-          .register(AppendResponse.class)
-          .register(Void.class) // PublishRequest
-          .register(Void.class) // ResetRequest
-          .register(RaftResponse.Status.class)
-          .register(RaftError.class)
-          .register(RaftError.Type.class)
-          .register(Void.class) // ReadConsistency
-          .register(Void.class) // SessionMetadata
-          .register(Void.class) // CloseSessionEntry
-          .register(Void.class) // CommandEntry
-          .register(ConfigurationEntry.class)
-          .register(InitializeEntry.class)
-          .register(Void.class) // KeepAliveEntry
-          .register(Void.class) // MetadataEntry
-          .register(Void.class) // OpenSessionEntry
-          .register(Void.class) // QueryEntry
-          .register(Void.class) // PrimitiveOperation
-          .register(Void.class) // PrimitiveEvent
-          .register(Void.class) // DefaultEventType
-          .register(Void.class) // DefaultOperationId
-          .register(Void.class) // OperationType
-          .register(Void.class) // ReadConsistency
-          .register(ArrayList.class)
-          .register(LinkedList.class)
-          .register(Collections.emptyList().getClass())
-          .register(HashSet.class)
-          .register(DefaultRaftMember.class)
-          .register(MemberId.class)
-          .register(Void.class) // SessionId
-          .register(RaftMember.Type.class)
-          .register(Instant.class)
-          .register(Configuration.class)
-          .register(ZeebeEntry.class)
-          .setCompatible(true)
-          .build("RaftProtocol");
+  public static final Namespace RAFT_PROTOCOL;
 
   /**
    * Raft storage namespace.
@@ -132,16 +65,21 @@ public final class RaftNamespaces {
    */
   public static final FallbackNamespace RAFT_STORAGE;
 
-  static {
-    final Namespace legacy = registerStorageClasses().build("RaftStorage");
-    final Namespace compatible =
-        registerStorageClasses().setCompatible(true).build("RaftStorage-compatible");
-    RAFT_STORAGE = new FallbackNamespace(legacy, compatible);
-  }
-
   private RaftNamespaces() {}
 
-  private static Builder registerStorageClasses() {
+  static {
+    final Namespace storageLegacy = buildStorageNamespace().build("RaftStorage");
+    final Namespace storageCompatible =
+        buildStorageNamespace().setCompatible(true).build("RaftStorage-compatible");
+    RAFT_STORAGE = new FallbackNamespace(storageLegacy, storageCompatible);
+
+    final Namespace protocolLegacy = buildProtocolNamespace().build("RaftProtocol");
+    final Namespace protocolCompatible =
+        buildProtocolNamespace().setCompatible(true).build("RaftProtocol-compatible");
+    RAFT_PROTOCOL = new FallbackNamespace(protocolLegacy, protocolCompatible);
+  }
+
+  private static Builder buildStorageNamespace() {
     return Namespace.builder()
         .register(Namespaces.BASIC)
         .nextId(Namespaces.BEGIN_USER_CUSTOM_ID + 100)
@@ -161,6 +99,74 @@ public final class RaftNamespaces {
         .register(HashSet.class)
         .register(DefaultRaftMember.class)
         .register(MemberId.class)
+        .register(RaftMember.Type.class)
+        .register(Instant.class)
+        .register(Configuration.class)
+        .register(ZeebeEntry.class);
+  }
+
+  private static Builder buildProtocolNamespace() {
+    return Namespace.builder()
+        .register(Namespaces.BASIC)
+        .nextId(Namespaces.BEGIN_USER_CUSTOM_ID)
+        .register(Void.class) // OpenSessionRequest
+        .register(Void.class) // OpenSessionResponse
+        .register(Void.class) // CloseSessionRequest
+        .register(Void.class) // CloseSessionResponse
+        .register(Void.class) // KeepAliveRequest
+        .register(Void.class) // KeepAliveResponse
+        .register(Void.class) // HeartbeatRequest
+        .register(Void.class) // HeartbeatResponse
+        .register(Void.class) // QueryRequest
+        .register(Void.class) // QueryResponse
+        .register(Void.class) // CommandRequest
+        .register(Void.class) // CommandResponse
+        .register(Void.class) // MetadataRequest
+        .register(Void.class) // MetadataResponse
+        .register(JoinRequest.class)
+        .register(JoinResponse.class)
+        .register(LeaveRequest.class)
+        .register(LeaveResponse.class)
+        .register(ConfigureRequest.class)
+        .register(ConfigureResponse.class)
+        .register(ReconfigureRequest.class)
+        .register(ReconfigureResponse.class)
+        .register(InstallRequest.class)
+        .register(InstallResponse.class)
+        .register(PollRequest.class)
+        .register(PollResponse.class)
+        .register(VoteRequest.class)
+        .register(VoteResponse.class)
+        .register(AppendRequest.class)
+        .register(AppendResponse.class)
+        .register(Void.class) // PublishRequest
+        .register(Void.class) // ResetRequest
+        .register(RaftResponse.Status.class)
+        .register(RaftError.class)
+        .register(RaftError.Type.class)
+        .register(Void.class) // ReadConsistency
+        .register(Void.class) // SessionMetadata
+        .register(Void.class) // CloseSessionEntry
+        .register(Void.class) // CommandEntry
+        .register(ConfigurationEntry.class)
+        .register(InitializeEntry.class)
+        .register(Void.class) // KeepAliveEntry
+        .register(Void.class) // MetadataEntry
+        .register(Void.class) // OpenSessionEntry
+        .register(Void.class) // QueryEntry
+        .register(Void.class) // PrimitiveOperation
+        .register(Void.class) // PrimitiveEvent
+        .register(Void.class) // DefaultEventType
+        .register(Void.class) // DefaultOperationId
+        .register(Void.class) // OperationType
+        .register(Void.class) // ReadConsistency
+        .register(ArrayList.class)
+        .register(LinkedList.class)
+        .register(Collections.emptyList().getClass())
+        .register(HashSet.class)
+        .register(DefaultRaftMember.class)
+        .register(MemberId.class)
+        .register(Void.class) // SessionId
         .register(RaftMember.Type.class)
         .register(Instant.class)
         .register(Configuration.class)

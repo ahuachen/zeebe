@@ -121,6 +121,13 @@ public class SerializerBuilder implements Builder<Serializer> {
 
   @Override
   public Serializer build() {
-    return Serializer.using(name != null ? namespaceBuilder.build(name) : namespaceBuilder.build());
+    // TODO: refactor
+    final Namespace fallback =
+        name != null ? namespaceBuilder.build(name) : namespaceBuilder.build();
+    final Namespace namespace =
+        name != null
+            ? namespaceBuilder.setCompatible(true).build(name)
+            : namespaceBuilder.setCompatible(true).build();
+    return Serializer.using(new FallbackNamespace(fallback, namespace));
   }
 }

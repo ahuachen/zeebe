@@ -33,7 +33,9 @@ import io.atomix.cluster.impl.AddressSerializer;
 import io.atomix.utils.Version;
 import io.atomix.utils.event.AbstractListenerManager;
 import io.atomix.utils.net.Address;
+import io.atomix.utils.serializer.FallbackNamespace;
 import io.atomix.utils.serializer.Namespace;
+import io.atomix.utils.serializer.NamespaceImpl.Builder;
 import io.atomix.utils.serializer.Namespaces;
 import io.atomix.utils.serializer.Serializer;
 import java.util.ArrayList;
@@ -75,22 +77,12 @@ public class SwimMembershipProtocol
   private static final String MEMBERSHIP_PROBE_REQUEST = "atomix-membership-probe-request";
   private static final Serializer SERIALIZER =
       Serializer.using(
-          Namespace.builder()
-              .register(Namespaces.BASIC)
-              .nextId(Namespaces.BEGIN_USER_CUSTOM_ID)
-              .register(MemberId.class)
-              .register(new AddressSerializer(), Address.class)
-              .register(ImmutableMember.class)
-              .register(State.class)
-              .register(ImmutablePair.class)
-              .setCompatible(true)
-              .build("ClusterMembershipService"));
+          new FallbackNamespace(
+              buildNamespace().build("ClusterMembershipService"),
+              buildNamespace().setCompatible(true).build("ClusterMembershipService-compatible")));
+
   private final SwimMembershipProtocolConfig config;
-  private NodeDiscoveryService discoveryService;
-  private BootstrapService bootstrapService;
   private final AtomicBoolean started = new AtomicBoolean();
-  private SwimMember localMember;
-  private volatile Properties localProperties = new Properties();
   private final Map<MemberId, SwimMember> members = Maps.newConcurrentMap();
   private final List<SwimMember> randomMembers = Lists.newCopyOnWriteArrayList();
   private final Map<MemberId, ImmutableMember> updates = new LinkedHashMap<>();
@@ -98,25 +90,40 @@ public class SwimMembershipProtocol
   private final ScheduledExecutorService swimScheduler =
       Executors.newSingleThreadScheduledExecutor(
           namedThreads("atomix-cluster-heartbeat-sender", LOGGER));
+  private final ExecutorService eventExecutor =
+      Executors.newSingleThreadExecutor(namedThreads("atomix-cluster-events", LOGGER));
+  private final AtomicInteger probeCounter = new AtomicInteger();
+  private NodeDiscoveryService discoveryService;
+  private BootstrapService bootstrapService;
+  private SwimMember localMember;
   private final BiFunction<Address, byte[], CompletableFuture<byte[]>> probeRequestHandler =
       (address, payload) ->
           handleProbeRequest(SERIALIZER.decode(payload)).thenApply(SERIALIZER::encode);
   private final NodeDiscoveryEventListener discoveryEventListener = this::handleDiscoveryEvent;
-  private final ExecutorService eventExecutor =
-      Executors.newSingleThreadExecutor(namedThreads("atomix-cluster-events", LOGGER));
   private final BiFunction<Address, byte[], byte[]> syncHandler =
       (address, payload) -> SERIALIZER.encode(handleSync(SERIALIZER.decode(payload)));
   private final BiFunction<Address, byte[], byte[]> probeHandler =
       (address, payload) -> SERIALIZER.encode(handleProbe(SERIALIZER.decode(payload)));
   private final BiConsumer<Address, byte[]> gossipListener =
       (address, payload) -> handleGossipUpdates(SERIALIZER.decode(payload));
+  private volatile Properties localProperties = new Properties();
   private ScheduledFuture<?> gossipFuture;
   private ScheduledFuture<?> probeFuture;
   private ScheduledFuture<?> syncFuture;
-  private final AtomicInteger probeCounter = new AtomicInteger();
 
   SwimMembershipProtocol(final SwimMembershipProtocolConfig config) {
     this.config = config;
+  }
+
+  private static Builder buildNamespace() {
+    return Namespace.builder()
+        .register(Namespaces.BASIC)
+        .nextId(Namespaces.BEGIN_USER_CUSTOM_ID)
+        .register(MemberId.class)
+        .register(new AddressSerializer(), Address.class)
+        .register(ImmutableMember.class)
+        .register(State.class)
+        .register(ImmutablePair.class);
   }
 
   /**

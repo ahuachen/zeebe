@@ -25,7 +25,9 @@ import io.atomix.cluster.messaging.BroadcastService;
 import io.atomix.cluster.messaging.ManagedBroadcastService;
 import io.atomix.utils.AtomixRuntimeException;
 import io.atomix.utils.net.Address;
+import io.atomix.utils.serializer.FallbackNamespace;
 import io.atomix.utils.serializer.Namespace;
+import io.atomix.utils.serializer.NamespaceImpl;
 import io.atomix.utils.serializer.Namespaces;
 import io.atomix.utils.serializer.Serializer;
 import io.netty.bootstrap.Bootstrap;
@@ -57,22 +59,19 @@ public class NettyBroadcastService implements ManagedBroadcastService {
 
   private static final Serializer SERIALIZER =
       Serializer.using(
-          Namespace.builder()
-              .register(Namespaces.BASIC)
-              .nextId(Namespaces.BEGIN_USER_CUSTOM_ID)
-              .register(Message.class)
-              .setCompatible(true)
-              .build());
+          new FallbackNamespace(
+              buildNamespace().build(), buildNamespace().setCompatible(true).build()));
+
   private final Logger log = LoggerFactory.getLogger(getClass());
   private final boolean enabled;
   private final InetSocketAddress localAddress;
   private final InetSocketAddress groupAddress;
   private final NetworkInterface iface;
+  private final Map<String, Set<Consumer<byte[]>>> listeners = Maps.newConcurrentMap();
+  private final AtomicBoolean started = new AtomicBoolean();
   private EventLoopGroup group;
   private Channel serverChannel;
   private DatagramChannel clientChannel;
-  private final Map<String, Set<Consumer<byte[]>>> listeners = Maps.newConcurrentMap();
-  private final AtomicBoolean started = new AtomicBoolean();
 
   public NettyBroadcastService(
       final Address localAddress, final Address groupAddress, final boolean enabled) {
@@ -85,6 +84,13 @@ public class NettyBroadcastService implements ManagedBroadcastService {
     } catch (final SocketException e) {
       throw new AtomixRuntimeException(e);
     }
+  }
+
+  private static NamespaceImpl.Builder buildNamespace() {
+    return Namespace.builder()
+        .register(Namespaces.BASIC)
+        .nextId(Namespaces.BEGIN_USER_CUSTOM_ID)
+        .register(Message.class);
   }
 
   /**

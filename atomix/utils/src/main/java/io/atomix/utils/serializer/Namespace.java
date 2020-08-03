@@ -15,6 +15,8 @@
  */
 package io.atomix.utils.serializer;
 
+import com.google.common.collect.ImmutableList;
+import io.atomix.utils.serializer.NamespaceImpl.RegistrationBlock;
 import java.nio.ByteBuffer;
 
 public interface Namespace {
@@ -63,6 +65,8 @@ public interface Namespace {
    * @return deserialized Object
    */
   <T> T deserialize(final ByteBuffer buffer);
+
+  ImmutableList<RegistrationBlock> getRegisteredBlocks();
 
   /**
    * Creates a new {@link Namespace} builder.

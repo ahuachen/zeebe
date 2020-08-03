@@ -17,6 +17,8 @@ package io.atomix.utils.serializer;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
+import com.google.common.collect.ImmutableList;
+import io.atomix.utils.serializer.NamespaceImpl.RegistrationBlock;
 import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 
@@ -104,11 +106,18 @@ public class FallbackNamespace implements Namespace {
       try {
         buffer.position(position).limit(limit);
         return fallback.deserialize(buffer);
+
       } catch (final Exception legacyEx) {
         // rethrow most relevant exception and log the second one
         LOG.warn(String.format(DESERIALIZE_ERROR, legacyEx));
         throw compatEx;
       }
     }
+  }
+
+  @Override
+  public ImmutableList<RegistrationBlock> getRegisteredBlocks() {
+    // TODO: union of both?
+    return namespace.getRegisteredBlocks();
   }
 }
