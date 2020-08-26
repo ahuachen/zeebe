@@ -6,15 +6,6 @@ metadata:
     app.kubernetes.io/component: remote
     app.kubernetes.io/name: zeebe-chaos
 rules:
-- apiGroups:
-  - cloud.camunda.io
-  resources:
-  - zeebeclusters
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
+- apiGroups: ["", "extensions", "apps"]
+  resources: ["*"]
+  verbs: ["*"]
